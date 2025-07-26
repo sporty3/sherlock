@@ -22,18 +22,21 @@
 
 ## Installation
 
+> [!WARNING]  
+> Packages for ParrotOS and Ubuntu 24.04, maintained by a third party, appear to be __broken__.  
+> Users of these systems should defer to pipx/pip or Docker.
 
-| | Command | Notes |
-| - | - | - |
-| PyPI | `pipx install sherlock-project` | `pip` may be used in place of `pipx` |
-| Docker | `docker pull sherlock/sherlock` | |
-| Debian family | `apt install sherlock` | Kali, Parrot, Debian Testing and Sid |
-| BlackArch | `pacman -S sherlock` |  |
-| Homebrew | `brew install sherlock` | |
+| Method | Notes |
+| - | - |
+| `pipx install sherlock-project` | `pip` may be used in place of `pipx` |
+| `docker run -it --rm sherlock/sherlock` |
+| `dnf install sherlock-project` | |
+
+Community-maintained packages are available for Debian (>= 13), Ubuntu (>= 22.10), Homebrew, Kali, and BlackArch. These packages are not directly supported or maintained by the Sherlock Project.
 
 See all alternative installation methods [here](https://sherlockproject.xyz/installation)
 
-## Usage
+## General usage
 
 To search for only one user:
 ```bash
@@ -95,6 +98,24 @@ optional arguments:
   --local, -l           Force the use of the local data.json file.
   --nsfw                Include checking of NSFW sites from default list.
 ```
+## Apify Actor Usage [![Sherlock Actor](https://apify.com/actor-badge?actor=netmilk/sherlock)](https://apify.com/netmilk/sherlock?fpr=sherlock)
+
+<a href="https://apify.com/netmilk/sherlock?fpr=sherlock"><img src="https://apify.com/ext/run-on-apify.png" alt="Run Sherlock Actor on Apify" width="176" height="39" /></a>
+
+You can run Sherlock in the cloud without installation using the [Sherlock Actor](https://apify.com/netmilk/sherlock?fpr=sherlock) on [Apify](https://apify.com?fpr=sherlock) free of charge.
+
+``` bash
+$ echo '{"usernames":["user123"]}' | apify call -so netmilk/sherlock
+[{
+  "username": "user123",
+  "links": [
+    "https://www.1337x.to/user/user123/",
+    ...
+  ]
+}]
+```
+
+Read more about the [Sherlock Actor](../.actor/README.md), including how to use it programmaticaly via the Apify [API](https://apify.com/netmilk/sherlock/api?fpr=sherlock), [CLI](https://docs.apify.com/cli/?fpr=sherlock) and [JS/TS and Python SDKs](https://docs.apify.com/sdk?fpr=sherlock).
 
 ## Credits
 
@@ -103,6 +124,8 @@ Thank you to everyone who has contributed to Sherlock! ❤️
 <a href="https://github.com/sherlock-project/sherlock/graphs/contributors">
   <img src="https://contrib.rocks/image?&columns=25&max=10000&&repo=sherlock-project/sherlock" noZoom />
 </a>
+
+## Star history
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=sherlock-project/sherlock&type=Date&theme=dark" />

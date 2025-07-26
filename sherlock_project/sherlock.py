@@ -7,36 +7,42 @@ This module contains the main logic to search for usernames at social
 networks.
 """
 
+import sys
+
+try:
+    from sherlock_project.__init__ import import_error_test_var # noqa: F401
+except ImportError:
+    print("Did you run Sherlock with `python3 sherlock/sherlock.py ...`?")
+    print("This is an outdated method. Please see https://sherlockproject.xyz/installation for up to date instructions.")
+    sys.exit(1)
+
 import csv
 import signal
 import pandas as pd
 import os
 import re
-import sys
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
+from json import loads as json_loads
 from time import monotonic
+from typing import Optional
 
 import requests
+from requests_futures.sessions import FuturesSession
 
-# Removing __version__ here will trigger update message for users
-# Do not remove until ready to trigger that message
-# When removed, also remove all the noqa: E402 comments for linting
-__version__ = "0.14.4"
-del __version__
-
-from .__init__ import ( # noqa: E402
+from sherlock_project.__init__ import (
     __longname__,
-    __version__
+    __shortname__,
+    __version__,
+    forge_api_latest_release,
 )
 
-from requests_futures.sessions import FuturesSession    # noqa: E402
-from sherlock.result import QueryStatus                 # noqa: E402
-from sherlock.result import QueryResult                 # noqa: E402
-from sherlock.notify import QueryNotify                 # noqa: E402
-from sherlock.notify import QueryNotifyPrint            # noqa: E402
-from sherlock.sites import SitesInformation             # noqa: E402
-from colorama import init                               # noqa: E402
-from argparse import ArgumentTypeError                  # noqa: E402
+from sherlock_project.result import QueryStatus
+from sherlock_project.result import QueryResult
+from sherlock_project.notify import QueryNotify
+from sherlock_project.notify import QueryNotifyPrint
+from sherlock_project.sites import SitesInformation
+from colorama import init
+from argparse import ArgumentTypeError
 
 
 class SherlockFuturesSession(FuturesSession):
@@ -162,11 +168,14 @@ def multiple_usernames(username):
 
 
 def sherlock(
-    username,
-    site_data,
+    username: str,
+    site_data: dict,
     query_notify: QueryNotify,
-    proxy=None,
-    timeout=60,
+    tor: bool = False,
+    unique_tor: bool = False,
+    dump_response: bool = False,
+    proxy: Optional[str] = None,
+    timeout: int = 60,
 ):
     """Run Sherlock Analysis.
 
@@ -179,6 +188,8 @@ def sherlock(
     query_notify           -- Object with base type of QueryNotify().
                               This will be used to notify the caller about
                               query results.
+    tor                    -- Boolean indicating whether to use a tor circuit for the requests.
+    unique_tor             -- Boolean indicating whether to use a new tor circuit for each request.
     proxy                  -- String indicating the proxy URL
     timeout                -- Time in seconds to wait before timing out request.
                               Default is 60 seconds.
@@ -199,9 +210,32 @@ def sherlock(
 
     # Notify caller that we are starting the query.
     query_notify.start(username)
+    # Create session based on request methodology
+    if tor or unique_tor:
+        try:
+            from torrequest import TorRequest  # noqa: E402
+        except ImportError:
+            print("Important!")
+            print("> --tor and --unique-tor are now DEPRECATED, and may be removed in a future release of Sherlock.")
+            print("> If you've installed Sherlock via pip, you can include the optional dependency via `pip install 'sherlock-project[tor]'`.")
+            print("> Other packages should refer to their documentation, or install it separately with `pip install torrequest`.\n")
+            sys.exit(query_notify.finish())
 
-    # Normal requests
-    underlying_session = requests.session()
+        print("Important!")
+        print("> --tor and --unique-tor are now DEPRECATED, and may be removed in a future release of Sherlock.")
+
+        # Requests using Tor obfuscation
+        try:
+            underlying_request = TorRequest()
+        except OSError:
+            print("Tor not found in system path. Unable to continue.\n")
+            sys.exit(query_notify.finish())
+
+        underlying_session = underlying_request.session
+    else:
+        # Normal requests
+        underlying_session = requests.session()
+        underlying_request = requests.Request()
 
     # Limit number of workers to 20.
     # This is probably vastly overkill.
@@ -228,7 +262,7 @@ def sherlock(
         # A user agent is needed because some sites don't return the correct
         # information since they think that we are bots (Which we actually are...)
         headers = {
-            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/116.0",
+            "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:129.0) Gecko/20100101 Firefox/129.0",
         }
 
         if "headers" in net_info:
@@ -325,10 +359,15 @@ def sherlock(
             # Store future in data for access later
             net_info["request_future"] = future
 
+            # Reset identify for tor (if needed)
+            if unique_tor:
+                underlying_request.reset_identity()
+
         # Add this site's results into final dictionary with all the other results.
         results_total[social_network] = results_site
 
     # Open the file containing account links
+    # Core logic: If tor requests, make them here. If multi-threaded requests, wait for responses
     for social_network, net_info in site_data.items():
         # Retrieve results again
         results_site = results_total.get(social_network)
@@ -374,8 +413,10 @@ def sherlock(
         # be highly targetted. Comment at the end of each fingerprint to
         # indicate target and date fingerprinted.
         WAFHitMsgs = [
-            '.loading-spinner{visibility:hidden}body.no-js .challenge-running{display:none}body.dark{background-color:#222;color:#d9d9d9}body.dark a{color:#fff}body.dark a:hover{color:#ee730a;text-decoration:underline}body.dark .lds-ring div{border-color:#999 transparent transparent}body.dark .font-red{color:#b20f03}body.dark', # 2024-05-13 Cloudflare
-            '{return l.onPageView}}),Object.defineProperty(r,"perimeterxIdentifiers",{enumerable:' # 2024-04-09 PerimeterX / Human Security
+            r'.loading-spinner{visibility:hidden}body.no-js .challenge-running{display:none}body.dark{background-color:#222;color:#d9d9d9}body.dark a{color:#fff}body.dark a:hover{color:#ee730a;text-decoration:underline}body.dark .lds-ring div{border-color:#999 transparent transparent}body.dark .font-red{color:#b20f03}body.dark', # 2024-05-13 Cloudflare
+            r'<span id="challenge-error-text">', # 2024-11-11 Cloudflare error page
+            r'AwsWafIntegration.forceRefreshToken', # 2024-11-11 Cloudfront (AWS)
+            r'{return l.onPageView}}),Object.defineProperty(r,"perimeterxIdentifiers",{enumerable:' # 2024-04-09 PerimeterX / Human Security
         ]
 
         if error_text is not None:
@@ -436,6 +477,34 @@ def sherlock(
             raise ValueError(
                 f"Unknown Error Type '{error_type}' for " f"site '{social_network}'"
             )
+
+        if dump_response:
+            print("+++++++++++++++++++++")
+            print(f"TARGET NAME   : {social_network}")
+            print(f"USERNAME      : {username}")
+            print(f"TARGET URL    : {url}")
+            print(f"TEST METHOD   : {error_type}")
+            try:
+                print(f"STATUS CODES  : {net_info['errorCode']}")
+            except KeyError:
+                pass
+            print("Results...")
+            try:
+                print(f"RESPONSE CODE : {r.status_code}")
+            except Exception:
+                pass
+            try:
+                print(f"ERROR TEXT    : {net_info['errorMsg']}")
+            except KeyError:
+                pass
+            print(">>>>> BEGIN RESPONSE TEXT")
+            try:
+                print(r.text)
+            except Exception:
+                pass
+            print("<<<<< END RESPONSE TEXT")
+            print("VERDICT       : " + str(query_status))
+            print("+++++++++++++++++++++")
 
         # Notify caller about results of query.
         result = QueryResult(
@@ -502,7 +571,7 @@ def main():
     parser.add_argument(
         "--version",
         action="version",
-        version=f"Sherlock v{__version__}",
+        version=f"{__shortname__} v{__version__}",
         help="Display version information and dependencies.",
     )
     parser.add_argument(
@@ -526,6 +595,22 @@ def main():
         "-o",
         dest="output",
         help="If using single username, the output of the result will be saved to this file.",
+    )
+    parser.add_argument(
+        "--tor",
+        "-t",
+        action="store_true",
+        dest="tor",
+        default=False,
+        help="Make requests over Tor; increases runtime; requires Tor to be installed and in system path.",
+    )
+    parser.add_argument(
+        "--unique-tor",
+        "-u",
+        action="store_true",
+        dest="unique_tor",
+        default=False,
+        help="Make requests over Tor with new Tor circuit after each request; increases runtime; requires Tor to be installed and in system path.",
     )
     parser.add_argument(
         "--csv",
@@ -559,12 +644,19 @@ def main():
         help="Make requests over a proxy. e.g. socks5://127.0.0.1:1080",
     )
     parser.add_argument(
+        "--dump-response",
+        action="store_true",
+        dest="dump_response",
+        default=False,
+        help="Dump the HTTP response to stdout for targeted debugging.",
+    )
+    parser.add_argument(
         "--json",
         "-j",
         metavar="JSON_FILE",
         dest="json_file",
         default=None,
-        help="Load data from a JSON file or an online, valid, JSON file.",
+        help="Load data from a JSON file or an online, valid, JSON file. Upstream PR numbers also accepted.",
     )
     parser.add_argument(
         "--timeout",
@@ -627,6 +719,14 @@ def main():
         help="Include checking of NSFW sites from default list.",
     )
 
+    parser.add_argument(
+        "--no-txt",
+        action="store_true",
+        dest="no_txt",
+        default=False,
+        help="Disable creation of a txt file",
+    )
+
     args = parser.parse_args()
 
     # If the user presses CTRL-C, exit gracefully without throwing errors
@@ -634,25 +734,34 @@ def main():
 
     # Check for newer version of Sherlock. If it exists, let the user know about it
     try:
-        r = requests.get(
-            "https://raw.githubusercontent.com/sherlock-project/sherlock/master/sherlock/__init__.py"
-        )
+        latest_release_raw = requests.get(forge_api_latest_release).text
+        latest_release_json = json_loads(latest_release_raw)
+        latest_remote_tag = latest_release_json["tag_name"]
 
-        remote_version = str(re.findall('__version__ *= *"(.*)"', r.text)[0])
-        local_version = __version__
-
-        if remote_version != local_version:
+        if latest_remote_tag[1:] != __version__:
             print(
-                "Update Available!\n"
-                + f"You are running version {local_version}. Version {remote_version} is available at https://github.com/sherlock-project/sherlock"
+                f"Update available! {__version__} --> {latest_remote_tag[1:]}"
+                f"\n{latest_release_json['html_url']}"
             )
 
     except Exception as error:
         print(f"A problem occurred while checking for an update: {error}")
 
+    # Argument check
+    # TODO regex check on args.proxy
+    if args.tor and (args.proxy is not None):
+        raise Exception("Tor and Proxy cannot be set at the same time.")
+
     # Make prompts
     if args.proxy is not None:
         print("Using the proxy: " + args.proxy)
+
+    if args.tor or args.unique_tor:
+        print("Using Tor to make requests")
+
+        print(
+            "Warning: some websites might refuse connecting over Tor, so note that using this option might increase connection errors."
+        )
 
     if args.no_color:
         # Disable color output.
@@ -678,7 +787,24 @@ def main():
                 os.path.join(os.path.dirname(__file__), "resources/data.json")
             )
         else:
-            sites = SitesInformation(args.json_file)
+            json_file_location = args.json_file
+            if args.json_file:
+                # If --json parameter is a number, interpret it as a pull request number
+                if args.json_file.isnumeric():
+                    pull_number = args.json_file
+                    pull_url = f"https://api.github.com/repos/sherlock-project/sherlock/pulls/{pull_number}"
+                    pull_request_raw = requests.get(pull_url).text
+                    pull_request_json = json_loads(pull_request_raw)
+
+                    # Check if it's a valid pull request
+                    if "message" in pull_request_json:
+                        print(f"ERROR: Pull request #{pull_number} not found.")
+                        sys.exit(1)
+
+                    head_commit_sha = pull_request_json["head"]["sha"]
+                    json_file_location = f"https://raw.githubusercontent.com/sherlock-project/sherlock/{head_commit_sha}/sherlock_project/resources/data.json"
+
+            sites = SitesInformation(json_file_location)
     except Exception as error:
         print(f"ERROR:  {error}")
         sys.exit(1)
@@ -732,6 +858,9 @@ def main():
             username,
             site_data,
             query_notify,
+            tor=args.tor,
+            unique_tor=args.unique_tor,
+            dump_response=args.dump_response,
             proxy=args.proxy,
             timeout=args.timeout,
         )
@@ -746,14 +875,15 @@ def main():
         else:
             result_file = f"{username}.txt"
 
-        with open(result_file, "w", encoding="utf-8") as file:
-            exists_counter = 0
-            for website_name in results:
-                dictionary = results[website_name]
-                if dictionary.get("status").status == QueryStatus.CLAIMED:
-                    exists_counter += 1
-                    file.write(dictionary["url_user"] + "\n")
-            file.write(f"Total Websites Username Detected On : {exists_counter}\n")
+        if not args.no_txt:
+            with open(result_file, "w", encoding="utf-8") as file:
+                exists_counter = 0
+                for website_name in results:
+                    dictionary = results[website_name]
+                    if dictionary.get("status").status == QueryStatus.CLAIMED:
+                        exists_counter += 1
+                        file.write(dictionary["url_user"] + "\n")
+                file.write(f"Total Websites Username Detected On : {exists_counter}\n")
 
         if args.csv:
             result_file = f"{username}.csv"

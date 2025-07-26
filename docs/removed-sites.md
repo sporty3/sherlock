@@ -84,22 +84,6 @@ As of 2020-02-23, all usernames are reported as not existing.
   },
 ```
 
-## Fanpop
-
-As of 2020-02-23, all usernames are reported as not existing.
-
-```json
-  "fanpop": {
-    "errorType": "response_url",
-    "errorUrl": "http://www.fanpop.com/",
-    "rank": 9454,
-    "url": "http://www.fanpop.com/fans/{}",
-    "urlMain": "http://www.fanpop.com/",
-    "username_claimed": "blue",
-    "username_unclaimed": "noonewould_everusethis7"
-  },
-```
-
 ## Canva
 
 As of 2020-02-23, all usernames are reported as not existing.
@@ -618,7 +602,7 @@ removed
 
 ## Coderwall
 As of 2020-07-06, Coderwall returns false positives when checking for an username which contains a period.
-I have tried to find out what Coderwall's criteria is for a valid username, but unfortunately I have not been able to 
+I have tried to find out what Coderwall's criteria is for a valid username, but unfortunately I have not been able to
 find it and because of this, the best thing we can do now is to remove it.
 ```json
   "Coderwall": {
@@ -666,15 +650,15 @@ As of 2020-07-24, Zomato seems to be unstable. Majority of the time, Zomato take
 ## Mixer
 As of 2020-07-22, the Mixer service has closed down.
 ```json
-  "mixer.com": { 
-    "errorType": "status_code", 
-    "rank": 1544, 
-    "url": "https://mixer.com/{}", 
-    "urlMain": "https://mixer.com/", 
-    "urlProbe": "https://mixer.com/api/v1/channels/{}", 
-    "username_claimed": "blue", 
-    "username_unclaimed": "noonewouldeverusethis7" 
-  }, 
+  "mixer.com": {
+    "errorType": "status_code",
+    "rank": 1544,
+    "url": "https://mixer.com/{}",
+    "urlMain": "https://mixer.com/",
+    "urlProbe": "https://mixer.com/api/v1/channels/{}",
+    "username_claimed": "blue",
+    "username_unclaimed": "noonewouldeverusethis7"
+  },
 ```
 
 
@@ -1273,19 +1257,6 @@ As of 2022-05-1, FanCentro returns false positives. Will later in new version of
   },
 ```
 
-## Codeforces
-As og 2022-05-01, Codeforces returns false positives
-```json
-  "Codeforces": {
-    "errorType": "response_url",
-    "errorUrl": "https://codeforces.com/",
-    "url": "https://codeforces.com/profile/{}",
-    "urlMain": "https://www.codeforces.com/",
-    "username_claimed": "tourist",
-    "username_unclaimed": "noonewouldeverusethis789"
-  },
-```
-
 ## Smashcast
 As og 2022-05-01, Smashcast is down
 ```json
@@ -1300,7 +1271,7 @@ As og 2022-05-01, Smashcast is down
 
 ## Countable
 
-As og 2022-05-01, Countable returns false positives 
+As og 2022-05-01, Countable returns false positives
 ```json
   "Countable": {
     "errorType": "status_code",
@@ -1893,5 +1864,121 @@ As of 24.06.2024, Pentestit returns a 403. This is most likely due to a new site
     "url": "https://lab.pentestit.ru/profile/{}",
     "urlMain": "https://lab.pentestit.ru/",
     "username_claimed": "CSV"
+  }
+```
+
+
+## Euw
+__2024-06-09 :__ errorMsg detection doesn't work anymore, because the error message is included in HTTP request body, even in successful search
+```json
+"Euw": {
+    "errorMsg": "This summoner is not registered at OP.GG. Please check spelling.",
+    "errorType": "message",
+    "url": "https://euw.op.gg/summoner/userName={}",
+    "urlMain": "https://euw.op.gg/",
+    "username_claimed": "blue"
+  }
+```
+
+## Etsy
+__2024-06-10 :__ Http request returns 403 forbidden, and tries to verify the connection, so it doesn't work anymore
+```json
+"Etsy": {
+    "errorType": "status_code",
+    "url": "https://www.etsy.com/shop/{}",
+    "urlMain": "https://www.etsy.com/",
+    "username_claimed": "JennyKrafts"
+  }
+```
+
+## Alik.cz
+__2024-07-21 :__ Target is now BLACKLISTED from the default manifest due to the site recieving unnecessarily high traffic from Sherlock (by request of the site owners). This target is not permitted to be reactivited. Inclusion in unrelated manifests is not impacted, but it is discouraged.
+
+## 8tracks
+__2025-02-02 :__ Might be dead again. Nobody knows for sure.
+```json
+"8tracks": {
+    "errorType": "message",
+    "errorMsg": "\"available\":true",
+    "headers": {
+      "Accept-Language": "en-US,en;q=0.5"
+    },
+    "url": "https://8tracks.com/{}",
+    "urlProbe": "https://8tracks.com/users/check_username?login={}&format=jsonh",
+    "urlMain": "https://8tracks.com/",
+    "username_claimed": "blue"
+  }
+```
+
+## Shpock
+__2025-02-02 :__ Can likely be added back with a new endpoint (source username availability endpoint from mobile app reg flow?)
+```json
+"Shpock": {
+    "errorType": "status_code",
+    "url": "https://www.shpock.com/shop/{}/items",
+    "urlMain": "https://www.shpock.com/",
+    "username_claimed": "user"
+  }
+```
+
+## Twitch
+__2025-02-02 :__
+```json
+"Twitch": {
+    "errorType": "message",
+    "errorMsg": "components.availability-tracking.warn-unavailable.component",
+    "url": "https://www.twitch.tv/{}",
+    "urlMain": "https://www.twitch.tv/",
+    "urlProbe": "https://m.twitch.tv/{}",
+    "username_claimed": "jenny"
+  }
+```
+
+## Fiverr
+__2025-02-02 :__ Fiverr added CSRF protections that messed with this test
+```json
+"Fiverr": {
+    "errorMsg": "\"status\":\"success\"",
+    "errorType": "message",
+    "headers": {
+      "Content-Type": "application/json",
+      "Accept-Language": "en-US,en;q=0.9"
+    },
+    "regexCheck": "^[A-Za-z][A-Za-z\\d_]{5,14}$",
+    "request_method": "POST",
+    "request_payload": {
+      "username": "{}"
+    },
+    "url": "https://www.fiverr.com/{}",
+    "urlMain": "https://www.fiverr.com/",
+    "urlProbe": "https://www.fiverr.com/validate_username",
+    "username_claimed": "blueman"
+  }
+```
+
+## BabyRU
+__2025-02-02 :__ Just being problematic (possibly related to errorMsg encoding?)
+```json
+"babyRU": {
+    "errorMsg": [
+      "\u0421\u0442\u0440\u0430\u043d\u0438\u0446\u0430, \u043a\u043e\u0442\u043e\u0440\u0443\u044e \u0432\u044b \u0438\u0441\u043a\u0430\u043b\u0438, \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430",
+      "Доступ с вашего IP-адреса временно ограничен"
+    ],
+    "errorType": "message",
+    "url": "https://www.baby.ru/u/{}/",
+    "urlMain": "https://www.baby.ru/",
+    "username_claimed": "blue"
+  }
+```
+
+## v0.dev
+__2025-02-16 :__ Unsure if any way to view profiles exists now
+```json
+"v0.dev": {
+    "errorType": "message",
+    "errorMsg": "<title>v0 by Vercel</title>",
+    "url": "https://v0.dev/{}",
+    "urlMain": "https://v0.dev",
+    "username_claimed": "t3dotgg"
   }
 ```

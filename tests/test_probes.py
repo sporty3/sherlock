@@ -2,9 +2,9 @@ import pytest
 import random
 import string
 import re
-from sherlock.sherlock import sherlock
-from sherlock.notify import QueryNotify
-from sherlock.result import QueryStatus
+from sherlock_project.sherlock import sherlock
+from sherlock_project.notify import QueryNotify
+from sherlock_project.result import QueryStatus
 #from sherlock_interactives import Interactives
 
 
@@ -44,7 +44,7 @@ class TestLiveTargets:
 
     # Known positives should only use sites trusted to be reliable and unchanging
     @pytest.mark.parametrize('site,username',[
-        ('BodyBuilding', 'blue'),
+        ('Keybase', 'blue'),
         ('devRant', 'blue'),
     ])
     def test_known_positives_via_response_url(self, sites_info, site, username):
